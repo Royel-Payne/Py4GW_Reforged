@@ -8,8 +8,13 @@ event callbacks, no upkeep config, no templates -- with action logging on so the
 step-by-step trace right up to the faulting call.
 
 Deliberately no bot.UI.draw_window() -- that's where the Start button lives, so this script starts
-itself explicitly instead (see _started guard in main()), keeping the UI panel out as its own
-separate variable for a later bisect.
+itself explicitly instead, keeping the UI panel out as its own separate variable for a later bisect.
+
+Start() must come AFTER the first Update() call, not before: SetMainRoutine() only stores the
+routine, it never runs it -- Update() is what calls Routine() (registering the FSM's states) on its
+first tick, gated by `not self.config.initialized`. Start() requires non-empty states or it raises
+ValueError. So the sequence has to be Update() first (registers + sets initialized), then Start()
+once initialized is confirmed true -- not the other way around.
 
 Usage: load and run via Script Runner on a fresh character standing at Kormir on Island of Shehkah
 (map 490), quest 0x82A501 already taken BY HAND first. Watch the Py4GW console for the log_actions
@@ -34,10 +39,10 @@ _started = False
 
 def main():
     global _started
-    if not _started:
+    bot.Update()
+    if not _started and bot.config.initialized:
         _started = True
         bot.Start()
-    bot.Update()
 
 
 if __name__ == "__main__":
